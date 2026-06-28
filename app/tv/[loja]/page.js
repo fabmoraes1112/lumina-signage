@@ -103,8 +103,10 @@ export default function TV({ params }) {
   }
 
   // ── Notícias — busca via API interna (sem CORS) ──
-  // Reels: pega qualquer video da biblioteca que tenha 'reel' no nome
-  const reelsVideo = midias.find(m => m.tipo === 'video' && (m.nome?.toLowerCase().includes('reel') || m.filename?.toLowerCase().includes('reel')))
+  // Reels: todos os videos com 'reel' no nome, em sequência
+  const reelsVideos = midias.filter(m => m.tipo === 'video' && (m.nome?.toLowerCase().includes('reel') || m.filename?.toLowerCase().includes('reel')))
+  const [reelsIdx, setReelsIdx] = useState(0)
+  const reelsVideo = reelsVideos[reelsIdx] || reelsVideos[0] || null
 
   async function fetchNews() {
     try {
@@ -185,9 +187,26 @@ export default function TV({ params }) {
       }
     } else if (item.tipo === 'instagram') {
       const vid = document.getElementById('ig-video')
-      if (vid?.readyState >= 2) {
-        vid.currentTime = 0; vid.play()
-        vid.onended = nextMod
+      if (vid) {
+        vid.currentTime = 0
+        vid.loop = false
+        // Quando terminar, vai para próximo reel ou próximo módulo
+        vid.onended = () => {
+          if (reelsVideos.length > 1 && reelsIdx < reelsVideos.length - 1) {
+            setReelsIdx(prev => prev + 1)
+            // Mantém no módulo instagram mas troca o vídeo
+          } else {
+            setReelsIdx(0)
+            nextMod()
+          }
+        }
+        const playPromise = vid.play()
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {
+            // Autoplay bloqueado — avança após 20s
+            timerRef.current = setTimeout(nextMod, 20000)
+          })
+        }
       } else {
         timerRef.current = setTimeout(nextMod, (item.dur_sec || 20) * 1000)
       }
@@ -215,7 +234,7 @@ export default function TV({ params }) {
           <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontSize: 15, fontWeight: 700, color: gold, letterSpacing: '.06em' }}>{hora}</div>
           <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontSize: 9, color: 'rgba(210,179,111,.5)', letterSpacing: '.12em', textTransform: 'uppercase' }}>{data}</div>
         </div>
-        <div style={{ width: 5, height: 5, borderRadius: '50%', background: gold, boxShadow: '0 0 6px ' + gold, animation: 'pulse 2s ease-in-out infinite' }} />
+        <div className="strip-dot" style={{ width: 5, height: 5, borderRadius: '50%', background: gold, boxShadow: '0 0 6px ' + gold }} />
         <style>{}</style>
       </div>
 
@@ -277,8 +296,13 @@ export default function TV({ params }) {
             </div>
             <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1.35fr 1fr' }}>
               <div style={{ borderRight: '1px solid #111', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ flex: 1, background: 'linear-gradient(135deg,#1a1a00,#0d0d0d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 60, color: '#222', position: 'relative' }}>
-                  {news[0]?.img ? <img src={news[0].img} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} /> : '👗'}
+                <div style={{ flex: 1, background: 'linear-gradient(135deg,#1a1a00,#0d0d0d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 60, color: '#222', position: 'relative', overflow: 'hidden' }}>
+                  {news[0]?.img
+                    ? <img src={`/api/imgproxy?url=${encodeURIComponent(news[0].img)}`} alt=""
+                        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                        onError={e => { e.target.style.display='none' }} />
+                    : null}
+                  <span style={{ opacity: news[0]?.img ? 0 : 0.15, fontSize: 60 }}>👗</span>
                 </div>
                 <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top,rgba(0,0,0,.92) 0%,rgba(0,0,0,.12) 55%,transparent 100%)' }} />
                 <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '24px 28px', zIndex: 1 }}>
@@ -292,9 +316,11 @@ export default function TV({ params }) {
                   <div key={i} style={{ flex: 1, display: 'flex', borderBottom: i<2?'1px solid #111':undefined }}>
                     <div style={{ width: 100, flexShrink: 0, background: '#1a1a00', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: '#333', position: 'relative', overflow: 'hidden' }}>
                       {n.img
-                        ? <img src={n.img} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.style.display='none' }} />
-                        : <span style={{fontSize:32,opacity:.3}}>{['✂️','👠','💄'][i]}</span>
-                      }
+                        ? <img src={`/api/imgproxy?url=${encodeURIComponent(n.img)}`} alt=""
+                            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                            onError={e => { e.target.style.display='none' }} />
+                        : null}
+                      <span style={{ opacity: n.img ? 0 : 0.3, fontSize: 32 }}>{['✂️','👠','💄'][i]}</span>
                     </div>
                     <div style={{ flex: 1, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 4, justifyContent: 'center' }}>
                       <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.2em', textTransform: 'uppercase', color: gold }}>{n.cat || 'Moda'}</div>
@@ -361,12 +387,21 @@ export default function TV({ params }) {
         {tipo === 'instagram' && (
           <div style={{ position: 'absolute', inset: 0, background: '#060606', display: 'flex' }}>
             <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(160deg,#090912,#0a0a0a)' }}>
-              <video id="ig-video" loop muted playsInline src={reelsVideo?.url || ''} style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'none' }}
-                onCanPlay={e => { e.target.style.display = 'block'; e.target.play() }} />
-              <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, color: '#2a2a2a' }}>
-                <div style={{ fontSize: 64 }}>🎬</div>
-                <div style={{ fontSize: 14, letterSpacing: '.1em', textTransform: 'uppercase', color: '#333', textAlign: 'center', lineHeight: 1.6 }}>Adicione <strong>reels.mp4</strong><br/>na biblioteca da loja</div>
-              </div>
+              <video
+                  id="ig-video"
+                  key={reelsVideo?.url || 'no-video'}
+                  muted
+                  playsInline
+                  preload="auto"
+                  src={reelsVideo?.url || ''}
+                  style={{ width: '100%', height: '100%', objectFit: 'contain', display: reelsVideo ? 'block' : 'none', position: 'absolute', inset: 0 }}
+                />
+              {!reelsVideo && (
+                <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, color: '#2a2a2a' }}>
+                  <div style={{ fontSize: 64 }}>🎬</div>
+                  <div style={{ fontSize: 14, letterSpacing: '.1em', textTransform: 'uppercase', color: '#333', textAlign: 'center', lineHeight: 1.6 }}>Adicione vídeos com<br/><strong>reel</strong> no nome à biblioteca</div>
+                </div>
+              )}
               <div style={{ position: 'absolute', top: 14, right: 14, width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>📷</div>
               <div style={{ position: 'absolute', bottom: 20, left: 24 }}>
                 <div style={{ fontSize: 11, letterSpacing: '.18em', textTransform: 'uppercase', color: gold, marginBottom: 6 }}>Novidades da semana</div>
@@ -374,8 +409,9 @@ export default function TV({ params }) {
               </div>
             </div>
             <div style={{ width: 200, flexShrink: 0, borderLeft: '1px solid rgba(210,179,111,.15)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 16px', gap: 16, background: 'linear-gradient(180deg,#0d0d00,#0a0a0a)' }}>
-              <div style={{ width: 150, height: 150, borderRadius: 12, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff' }}>
-                <img src={'data:image/png;base64,' + (loja === 'mutum' ? QR_MUTUM_B64 : QR_IUNA_B64)} alt="QR" style={{ width: '90%', height: '90%', objectFit: 'contain', mixBlendMode: 'multiply' }} />
+              <div style={{ width: 150, height: 150, borderRadius: 12, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent' }}>
+                <img src={'data:image/png;base64,' + (loja === 'mutum' ? QR_MUTUM_B64 : QR_IUNA_B64)} alt="QR"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', mixBlendMode: 'multiply', filter: 'contrast(1.1)' }} />
               </div>
               <div style={{ fontFamily: 'serif', fontSize: 18, color: gold, textAlign: 'center', letterSpacing: '.04em' }}>@{config.instagram || 'lojaapaulistanaiuna'}</div>
               <div style={{ fontSize: 11, color: 'rgba(255,255,255,.4)', textAlign: 'center', lineHeight: 1.6 }}>Aponte a câmera<br/>e siga a gente!<br/>Novidades todo dia 🤍</div>
@@ -391,7 +427,7 @@ export default function TV({ params }) {
           <img src={'data:image/png;base64,' + LOGO_B64} alt="A Paulistana" style={{ height: 22, objectFit: 'contain', filter: 'brightness(0) saturate(100%) invert(75%) sepia(40%) saturate(600%) hue-rotate(5deg) brightness(95%)' }} />
         </div>
         <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
-          <div style={{ display: 'flex', whiteSpace: 'nowrap', animation: 'ticker 45s linear infinite' }}>
+          <div className="ticker-track">
             {[...Array(2)].flatMap(() => [
               ['FEMININO','— looks para toda ocasião'],['MASCULINO','— do casual ao social'],
               ['CALÇADOS','— tênis, sandálias e botas'],['INFANTIL','— roupas para os pequenos'],
