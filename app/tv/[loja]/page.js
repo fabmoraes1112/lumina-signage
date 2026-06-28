@@ -101,12 +101,12 @@ export default function TV({ params }) {
     } catch(e) {}
   }
 
-  // ── Notícias ──
+  // ── Notícias — busca via API interna (sem CORS) ──
   async function fetchNews() {
     try {
-      const r = await fetch('https://api.rss2json.com/v1/api.json?rss_url=https%3A%2F%2Fwww.vogue.com.br%2Ffeed')
+      const r = await fetch('/api/news')
       const d = await r.json()
-      if (d.items?.length) setNews(d.items.slice(0,4).map(it => ({ title: it.title, desc: it.description?.replace(/<[^>]+>/g,'').slice(0,140) || '', img: it.enclosure?.link || it.thumbnail || '', cat: it.categories?.[0] || 'Moda' })))
+      if (d.news?.length) setNews(d.news)
     } catch(e) {
       setNews([
         { title: 'Tendências do inverno 2026: cores vibrantes dominam', desc: 'As principais marcas apostam em paletas ousadas para a temporada fria.', img: '', cat: 'Tendência' },
