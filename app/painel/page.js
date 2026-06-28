@@ -433,6 +433,30 @@ export default function Painel() {
                   />
                 </div>
               </div>
+              <div style={S.card}>
+                <div style={{ fontSize: 11, color: '#7A85A3', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 12 }}>Velocidade da Galeria</div>
+                <div style={{ fontSize: 12, color: '#7A85A3', marginBottom: 12 }}>Controla a rapidez do carrossel de fotos na TV</div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {[
+                    { val: 1, label: '1× Normal' },
+                    { val: 2, label: '2× Rápido' },
+                    { val: 3, label: '3× Mais rápido' },
+                    { val: 4, label: '4× Veloz' },
+                    { val: 5, label: '5× Máximo' },
+                  ].map(opt => (
+                    <button key={opt.val} onClick={() => setConfig(prev => ({ ...prev, galeria_velocidade: opt.val }))}
+                      style={{
+                        flex: 1, padding: '10px 4px', borderRadius: 8, cursor: 'pointer', fontSize: 11, fontWeight: 500,
+                        border: `1px solid ${(config.galeria_velocidade || 1) === opt.val ? '#d2b36f' : '#2A3454'}`,
+                        background: (config.galeria_velocidade || 1) === opt.val ? 'rgba(210,179,111,.15)' : '#1C2540',
+                        color: (config.galeria_velocidade || 1) === opt.val ? '#d2b36f' : '#7A85A3',
+                      }}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <button onClick={async () => {
                 setLoading(true)
                 const res = await fetch('/api/config', {
