@@ -47,6 +47,8 @@ const FALLBACK = [
   { title: 'Acessórios dourados dominam a temporada fria', desc: 'Bijoux, bolsas e cintos em tom dourado elevam qualquer look básico.', img: IMGS.acessorio, cat: 'Acessórios' },
 ]
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   const feedIdx = Math.floor(Date.now() / 900000) % FEEDS.length
 
