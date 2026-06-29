@@ -411,7 +411,7 @@ export default function TV({ params }) {
             </div>
             <div style={{ width: 200, flexShrink: 0, borderLeft: '1px solid rgba(210,179,111,.15)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 16px', gap: 16, background: 'linear-gradient(180deg,#0d0d00,#0a0a0a)' }}>
               <div style={{ width: 150, height: 150, borderRadius: 14, overflow: 'hidden', background: '#fff', padding: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <img src=(loja === 'mutum' ? '/qr-mutum.png' : '/qr-iuna.png') alt="QR"
+                <img src={`/api/qr?loja=${loja}`} alt="QR"
                   style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
               </div>
               <div style={{ fontFamily: 'serif', fontSize: 18, color: gold, textAlign: 'center', letterSpacing: '.04em' }}>@{config.instagram || 'lojaapaulistanaiuna'}</div>
