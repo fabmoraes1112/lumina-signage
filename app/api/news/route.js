@@ -3,7 +3,10 @@ import { NextResponse } from 'next/server'
 // Imagens de moda por categoria — Unsplash (gratuito, sem CORS)
 const IMGS = {
   tendencia: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=600&q=80',
-  calcados:  'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&q=80',
+  bota:      'https://images.unsplash.com/photo-1608256246200-53e635b5b65f?w=600&q=80',
+  sandalia:  'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=600&q=80',
+  tenis:     'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&q=80',
+  sapato:    'https://images.unsplash.com/photo-1518049362265-d5b2a6467637?w=600&q=80',
   masculino: 'https://images.unsplash.com/photo-1617137968427-85924c800a22?w=600&q=80',
   feminino:  'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=600&q=80',
   acessorio: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=600&q=80',
