@@ -103,10 +103,10 @@ export default function TV({ params }) {
   }
 
   // ── Notícias — busca via API interna (sem CORS) ──
-  // Reels: todos os videos com 'reel' no nome, em sequência
+  // Reels: um por loop — cada vez que o módulo instagram aparece, usa o próximo reel
   const reelsVideos = midias.filter(m => m.tipo === 'video' && (m.nome?.toLowerCase().includes('reel') || m.filename?.toLowerCase().includes('reel')))
-  const [reelsIdx, setReelsIdx] = useState(0)
-  const reelsVideo = reelsVideos[reelsIdx] || reelsVideos[0] || null
+  const reelsIdxRef = useRef(0)
+  const reelsVideo = reelsVideos[reelsIdxRef.current % Math.max(1, reelsVideos.length)] || null
 
   async function fetchNews() {
     try {
@@ -186,26 +186,23 @@ export default function TV({ params }) {
         timerRef.current = setTimeout(nextMod, 8000)
       }
     } else if (item.tipo === 'instagram') {
+      // Avança o índice do reel para o próximo loop
+      reelsIdxRef.current = (reelsIdxRef.current + 1)
       const vid = document.getElementById('ig-video')
-      if (vid) {
+      if (vid && reelsVideos.length > 0) {
         vid.currentTime = 0
         vid.loop = false
-        // Quando terminar, vai para próximo reel ou próximo módulo
-        vid.onended = () => {
-          if (reelsVideos.length > 1 && reelsIdx < reelsVideos.length - 1) {
-            setReelsIdx(prev => prev + 1)
-            // Mantém no módulo instagram mas troca o vídeo
-          } else {
-            setReelsIdx(0)
-            nextMod()
-          }
+        vid.onended = () => nextMod()
+        // Aguarda o vídeo estar pronto
+        const tryPlay = () => {
+          const p = vid.play()
+          if (p) p.catch(() => { timerRef.current = setTimeout(nextMod, 20000) })
         }
-        const playPromise = vid.play()
-        if (playPromise !== undefined) {
-          playPromise.catch(() => {
-            // Autoplay bloqueado — avança após 20s
-            timerRef.current = setTimeout(nextMod, 20000)
-          })
+        if (vid.readyState >= 2) {
+          tryPlay()
+        } else {
+          vid.oncanplay = () => { vid.oncanplay = null; tryPlay() }
+          timerRef.current = setTimeout(() => { if (!vid.paused) return; nextMod() }, 15000)
         }
       } else {
         timerRef.current = setTimeout(nextMod, (item.dur_sec || 20) * 1000)
@@ -235,7 +232,12 @@ export default function TV({ params }) {
           <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontSize: 9, color: 'rgba(210,179,111,.5)', letterSpacing: '.12em', textTransform: 'uppercase' }}>{data}</div>
         </div>
         <div className="strip-dot" style={{ width: 5, height: 5, borderRadius: '50%', background: gold, boxShadow: '0 0 6px ' + gold }} />
-        <style>{}</style>
+        <style>{`
+        @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.2; } }
+        @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+        .ticker-track { animation: ticker 45s linear infinite; display: flex; white-space: nowrap; }
+        .strip-dot { animation: pulse 2s ease-in-out infinite; }
+      `}</style>
       </div>
 
       {/* STAGE */}
@@ -409,9 +411,9 @@ export default function TV({ params }) {
               </div>
             </div>
             <div style={{ width: 200, flexShrink: 0, borderLeft: '1px solid rgba(210,179,111,.15)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 16px', gap: 16, background: 'linear-gradient(180deg,#0d0d00,#0a0a0a)' }}>
-              <div style={{ width: 150, height: 150, borderRadius: 12, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent' }}>
+              <div style={{ width: 150, height: 150, borderRadius: 14, overflow: 'hidden', background: '#fff', padding: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <img src={'data:image/png;base64,' + (loja === 'mutum' ? QR_MUTUM_B64 : QR_IUNA_B64)} alt="QR"
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', mixBlendMode: 'multiply', filter: 'contrast(1.1)' }} />
+                  style={{ width: '100%', height: '100%', objectFit: 'contain', mixBlendMode: 'multiply' }} />
               </div>
               <div style={{ fontFamily: 'serif', fontSize: 18, color: gold, textAlign: 'center', letterSpacing: '.04em' }}>@{config.instagram || 'lojaapaulistanaiuna'}</div>
               <div style={{ fontSize: 11, color: 'rgba(255,255,255,.4)', textAlign: 'center', lineHeight: 1.6 }}>Aponte a câmera<br/>e siga a gente!<br/>Novidades todo dia 🤍</div>
@@ -444,7 +446,12 @@ export default function TV({ params }) {
             ))}
           </div>
         </div>
-        <style>{}</style>
+        <style>{`
+        @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.2; } }
+        @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+        .ticker-track { animation: ticker 45s linear infinite; display: flex; white-space: nowrap; }
+        .strip-dot { animation: pulse 2s ease-in-out infinite; }
+      `}</style>
       </div>
     </div>
   )
