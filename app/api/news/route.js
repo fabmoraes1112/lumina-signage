@@ -46,7 +46,7 @@ const FEEDS = [
 const FALLBACK = [
   { title: 'Inverno 2026: cores vibrantes dominam as passarelas internacionais', desc: 'As principais marcas apostam em paletas ousadas e sobreposição de peças para a temporada.', img: IMGS.inverno, cat: 'Tendência' },
   { title: 'Guarda-roupa cápsula: looks versáteis com poucas peças-chave', desc: 'A técnica garante combinações infinitas e elimina o "não tenho nada para vestir".', img: IMGS.roupa, cat: 'Dica de Estilo' },
-  { title: 'Botas de cano médio: o must-have do inverno 2026', desc: 'O modelo está nas vitrines de todas as lojas e cabe em todos os estilos.', img: IMGS.calcados, cat: 'Calçados' },
+  { title: 'Botas de cano médio: o must-have do inverno 2026', desc: 'O modelo está nas vitrines de todas as lojas e cabe em todos os estilos.', img: IMGS.bota, cat: 'Calçados' },
   { title: 'Acessórios dourados dominam a temporada fria', desc: 'Bijoux, bolsas e cintos em tom dourado elevam qualquer look básico.', img: IMGS.acessorio, cat: 'Acessórios' },
 ]
 
