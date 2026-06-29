@@ -23,7 +23,7 @@ const IMGS = {
 
 function getImgByText(text) {
   const t = text.toLowerCase()
-  if (t.includes('bota') || t.includes('sapato') || t.includes('tênis') || t.includes('calçado') || t.includes('sandália')) return IMGS.calcados
+  if (t.includes('bota') || t.includes('sapato') || t.includes('tênis') || t.includes('calçado') || t.includes('sandália')) return IMGS.bota
   if (t.includes('bolsa') || t.includes('acessório') || t.includes('bijoux') || t.includes('colar') || t.includes('anel')) return IMGS.acessorio
   if (t.includes('masculin') || t.includes('homem') || t.includes('moletom') || t.includes('camisa')) return IMGS.masculino
   if (t.includes('feminino') || t.includes('mulher') || t.includes('vestido') || t.includes('saia')) return IMGS.feminino
