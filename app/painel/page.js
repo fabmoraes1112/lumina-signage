@@ -42,7 +42,7 @@ export default function Painel() {
       const [cfgRes, plRes, midRes, tvRes] = await Promise.all([
         fetch(`/api/config?loja=${lojaId}`).then(r => r.json()),
         fetch(`/api/playlist?loja=${lojaId}`).then(r => r.json()),
-        fetch(`/api/debug?loja=${lojaId}`).then(r => r.json()),
+        fetch(`/api/midias?loja=${lojaId}`).then(r => r.json()),
         supabase.from('tvs').select('*').eq('loja', lojaId),
       ])
       if (cfgRes.config) setConfig(cfgRes.config)
@@ -50,7 +50,7 @@ export default function Painel() {
         ...p, tipo: p.tipo, nome: p.nome || MODULOS[p.tipo]?.nome || p.tipo,
         dur_sec: p.dur_sec || 10,
       })))
-      const mList = midRes.data || midRes.midias || []; if (mList.length) setMidias(mList)
+      if (midRes.midias) setMidias(midRes.midias)
       if (tvRes.data) setTvs(tvRes.data)
       showToast('Sincronizado com Supabase!', 'ok')
     } catch(e) {
