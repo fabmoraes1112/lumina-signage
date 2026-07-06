@@ -10,9 +10,8 @@ export async function GET(req) {
   const { data, error } = await supabase
     .from('midias')
     .select('*')
-    .eq('loja', loja)
-    .order('created_at', { ascending: false })
     .limit(500)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ data: data || [], midias: data || [], count: data?.length })
+  const filtered = (data || []).filter(m => m.loja === loja)
+  return NextResponse.json({ data: filtered, midias: filtered, count: filtered.length, total: data?.length })
 }
