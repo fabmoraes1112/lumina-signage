@@ -50,7 +50,7 @@ export default function Painel() {
         ...p, tipo: p.tipo, nome: p.nome || MODULOS[p.tipo]?.nome || p.tipo,
         dur_sec: p.dur_sec || 10,
       })))
-      if (midRes.midias) setMidias(midRes.midias)
+      const mList = midRes.data || midRes.midias || []; if (mList.length) setMidias(mList)
       if (tvRes.data) setTvs(tvRes.data)
       showToast('Sincronizado com Supabase!', 'ok')
     } catch(e) {

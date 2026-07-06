@@ -68,7 +68,7 @@ export default function TV({ params }) {
       ])
       if (cfgRes.config) setConfig(cfgRes.config)
       if (plRes.playlist?.length) setPlaylist(plRes.playlist)
-      if (midRes.midias?.length)  setMidias(midRes.midias)
+      const midiasData = midRes.data || midRes.midias || []; if (midiasData.length) setMidias(midiasData)
       fetchClima(); fetchNews()
     }
     load()
