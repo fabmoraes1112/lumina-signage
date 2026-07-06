@@ -221,7 +221,7 @@ export default function TV({ params }) {
   const loteAtual = galLotes[galLote] || []
 
   return (
-    <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#060606', display: 'grid', gridTemplateColumns: '56px 1fr', gridTemplateRows: '1fr 44px', fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ width: '100%', height: '100%', overflow: 'hidden', background: '#060606', position: 'fixed', inset: 0, display: 'grid', gridTemplateColumns: '56px 1fr', gridTemplateRows: '1fr 44px', fontFamily: "'Inter', sans-serif" }}>
 
       {/* STRIP LATERAL */}
       <div style={{ gridArea: '1/1/2/2', background: 'linear-gradient(180deg,#1a1500,#0f0e00,#1a1500)', borderRight: '1px solid rgba(210,179,111,.25)', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px 0 12px', gap: 0, zIndex: 30 }}>
