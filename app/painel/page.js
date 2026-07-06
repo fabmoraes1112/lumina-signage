@@ -42,7 +42,7 @@ export default function Painel() {
       const [cfgRes, plRes, midRes, tvRes] = await Promise.all([
         fetch(`/api/config?loja=${lojaId}`).then(r => r.json()),
         fetch(`/api/playlist?loja=${lojaId}`).then(r => r.json()),
-        fetch(`/api/midias?loja=${lojaId}`).then(r => r.json()),
+        fetch(`/api/debug?loja=${lojaId}`).then(r => r.json()),
         supabase.from('tvs').select('*').eq('loja', lojaId),
       ])
       if (cfgRes.config) setConfig(cfgRes.config)

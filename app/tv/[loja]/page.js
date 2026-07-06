@@ -64,7 +64,7 @@ export default function TV({ params }) {
       const [cfgRes, plRes, midRes] = await Promise.all([
         fetch('/api/config?loja=' + loja).then(r => r.json()).catch(() => ({})),
         fetch('/api/playlist?loja=' + loja).then(r => r.json()).catch(() => ({})),
-        fetch('/api/midias?loja=' + loja).then(r => r.json()).catch(() => ({})),
+        fetch('/api/debug?loja=' + loja).then(r => r.json()).catch(() => ({})),
       ])
       if (cfgRes.config) setConfig(cfgRes.config)
       if (plRes.playlist?.length) setPlaylist(plRes.playlist)
