@@ -13,10 +13,10 @@ export async function GET(req) {
   const { data, error } = await supabase
     .from('midias')
     .select('*')
-    .eq('loja', loja)
-    .order('created_at', { ascending: false })
+    .limit(200)
+  const filtrado = (data || []).filter(m => m.loja === loja)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ midias: data || [] })
+  return NextResponse.json({ midias: filtrado, total: data?.length, loja })
 }
 
 export async function DELETE(req) {
