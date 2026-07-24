@@ -211,6 +211,16 @@ export default function TV({ params }) {
         vid.currentTime = 0
         vid.loop = false
         vid.onended = () => nextMod()
+        vid.onerror = () => nextMod()
+        clearInterval(window.__reelWd)
+        var ultimoT = -1, parado = 0
+        window.__reelWd = setInterval(function () {
+          var v = document.getElementById('ig-video')
+          if (!v) { clearInterval(window.__reelWd); return }
+          if (v.ended) { clearInterval(window.__reelWd); nextMod(); return }
+          if (v.currentTime === ultimoT) { parado++ } else { parado = 0; ultimoT = v.currentTime }
+          if (parado >= 8) { clearInterval(window.__reelWd); nextMod() }
+        }, 1000)
         // Aguarda o vídeo estar pronto
         const tryPlay = () => {
           const p = vid.play()
