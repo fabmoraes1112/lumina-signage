@@ -107,6 +107,25 @@ export default function TV({ params }) {
   const reelsIdxRef = useRef(0)
   const reelsVideo = reelsVideos[reelsIdxRef.current % Math.max(1, reelsVideos.length)] || null
 
+  // Recarrega a pagina forcando busca nova (sem cache do navegador da TV)
+  const recarregar = () => { window.location.href = window.location.pathname + '?t=' + Date.now() }
+
+  // Watchdog: se o modulo travar por mais de 5 min, recarrega sozinho
+  const wdRef = useRef(Date.now())
+  useEffect(() => {
+    wdRef.current = Date.now()
+    const iv = setInterval(() => {
+      if (Date.now() - wdRef.current > 300000) recarregar()
+    }, 30000)
+    return () => clearInterval(iv)
+  }, [modIdx])
+
+  // Auto-reload a cada 1 hora: limpa memoria, atualiza noticias, clima e playlist
+  useEffect(() => {
+    const t = setTimeout(recarregar, 3600000)
+    return () => clearTimeout(t)
+  }, [])
+
   async function fetchNews() {
     try {
       const r = await fetch('/api/news')
