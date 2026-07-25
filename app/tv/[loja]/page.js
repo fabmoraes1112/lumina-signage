@@ -36,6 +36,8 @@ export default function TV({ params }) {
   const [galLote, setGalLote]   = useState(0)
   const [galTrackX, setGalTrackX] = useState(0)
   const [news, setNews]         = useState([])
+  const [ofertas, setOfertas]   = useState([])
+  const ofertaIdxRef = useRef(0)
   const galRef  = useRef()
   const timerRef = useRef()
   const rafRef   = useRef()
@@ -64,11 +66,13 @@ export default function TV({ params }) {
       const [cfgRes, plRes, midRes] = await Promise.all([
         fetch('/api/config?loja=' + loja).then(r => r.json()).catch(() => ({})),
         fetch('/api/playlist?loja=' + loja).then(r => r.json()).catch(() => ({})),
-        fetch('/api/midias?loja=' + loja).then(r => r.json()).catch(() => ({})),
+        supabase.from('midias').select('*').eq('loja', loja).order('created_at', { ascending: false }),
       ])
       if (cfgRes.config) setConfig(cfgRes.config)
       if (plRes.playlist?.length) setPlaylist(plRes.playlist)
-      if (midRes.midias?.length)  setMidias(midRes.midias)
+      const midiasData = midRes.midias || midRes.data || []; if (midiasData.length) setMidias(midiasData.filter(m => m.loja === loja))
+      const ofRes = await supabase.from('ofertas').select('*').eq('loja', loja).eq('ativo', true).order('ordem')
+      if (ofRes.data) setOfertas(ofRes.data)
       fetchClima(); fetchNews()
     }
     load()
@@ -78,6 +82,8 @@ export default function TV({ params }) {
         () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'midias', filter: 'loja=eq.' + loja },
         () => load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'noticias', filter: 'loja=eq.' + loja }, () => fetchNews())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ofertas', filter: 'loja=eq.' + loja }, () => fetchOfertas())
       .subscribe()
     return () => supabase.removeChannel(channel)
   }, [loja])
@@ -107,36 +113,32 @@ export default function TV({ params }) {
   const reelsIdxRef = useRef(0)
   const reelsVideo = reelsVideos[reelsIdxRef.current % Math.max(1, reelsVideos.length)] || null
 
-  // Recarrega a pagina forcando busca nova (sem cache do navegador da TV)
-  const recarregar = () => { window.location.href = window.location.pathname + '?t=' + Date.now() }
-
-  // Watchdog: se o modulo travar por mais de 5 min, recarrega sozinho
-  const wdRef = useRef(Date.now())
-  useEffect(() => {
-    wdRef.current = Date.now()
-    const iv = setInterval(() => {
-      if (Date.now() - wdRef.current > 300000) recarregar()
-    }, 30000)
-    return () => clearInterval(iv)
-  }, [modIdx])
-
-  // Auto-reload a cada 1 hora: limpa memoria, atualiza noticias, clima e playlist
-  useEffect(() => {
-    const t = setTimeout(recarregar, 3600000)
-    return () => clearTimeout(t)
-  }, [])
+  async function fetchOfertas() {
+    const { data } = await supabase.from('ofertas').select('*').eq('loja', loja).eq('ativo', true).order('ordem')
+    if (data) setOfertas(data)
+  }
 
   async function fetchNews() {
     try {
-      const r = await fetch('/api/news')
-      const d = await r.json()
-      if (d.news?.length) setNews(d.news)
+      // 1) Notícias escritas pela loja no painel
+      const { data: custom } = await supabase.from('noticias').select('*').eq('loja', loja).eq('ativo', true).order('destaque', { ascending: false }).order('ordem')
+      let lista = (custom || []).map(n => ({ title: n.titulo, desc: n.subtitulo, img: n.img_url, cat: 'Novidade', destaque: n.destaque }))
+      // 2) Se tiver menos de 4, completa com feeds de moda da internet
+      if (lista.length < 4) {
+        try {
+          const r = await fetch('/api/news?t=' + Date.now(), { cache: 'no-store' })
+          const d = await r.json()
+          if (d.news?.length) lista = lista.concat(d.news.slice(0, 4 - lista.length))
+        } catch(e) {}
+      }
+      if (lista.length) { setNews(lista); return }
+      throw new Error('sem noticias')
     } catch(e) {
       setNews([
-        { title: 'Tendências do inverno 2026: cores vibrantes dominam', desc: 'As principais marcas apostam em paletas ousadas para a temporada fria.', img: '', cat: 'Tendência' },
-        { title: 'Guarda-roupa cápsula: como montar looks versáteis', desc: 'Aprenda a criar combinações infinitas com poucas peças essenciais.', img: '', cat: 'Dica' },
-        { title: 'Botas de cano médio lideram vendas no inverno', desc: 'O modelo ganhou versões para todos os estilos e orçamentos.', img: '', cat: 'Calçados' },
-        { title: 'Moletom vira peça-chave no visual moderno masculino', desc: 'Conforto e estilo se unem na peça mais desejada da temporada.', img: '', cat: 'Masculino' },
+        { title: 'Tendências do inverno 2026: cores vibrantes dominam as passarelas', desc: 'As principais marcas apostam em paletas ousadas e sobreposição de peças.', img: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&q=80', cat: 'Tendência' },
+        { title: 'Guarda-roupa cápsula: looks versáteis com poucas peças', desc: 'A técnica garante combinações infinitas com apenas 10 peças-chave.', img: 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=400&q=80', cat: 'Dica de Estilo' },
+        { title: 'Botas de cano médio lideram vendas no inverno 2026', desc: 'O modelo ganhou versões para todos os estilos e orçamentos da temporada.', img: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=80', cat: 'Calçados' },
+        { title: 'Moletom vira peça-chave no visual masculino moderno', desc: 'Conforto e estilo se unem na peça mais desejada pelos homens neste inverno.', img: 'https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=400&q=80', cat: 'Masculino' },
       ])
     }
   }
@@ -203,34 +205,58 @@ export default function TV({ params }) {
       } else {
         timerRef.current = setTimeout(nextMod, 8000)
       }
+    } else if (item.tipo === 'ofertas') {
+      fetchOfertas()
+      // Sem ofertas cadastradas: pula o bloco
+      if (!ofertas.length) { timerRef.current = setTimeout(nextMod, 50); return }
+      // Rodízio: uma oferta por volta do loop
+      const ofertaAtual = ofertas[ofertaIdxRef.current % ofertas.length]
+      ofertaIdxRef.current = (ofertaIdxRef.current + 1)
+      if (ofertaAtual && ofertaAtual.midia_tipo === 'video' && ofertaAtual.midia_url) {
+        const vid = document.getElementById('oferta-video')
+        if (vid) {
+          vid.muted = true; vid.loop = false; vid.currentTime = 0
+          vid.onended = () => nextMod()
+          vid.onerror = () => { timerRef.current = setTimeout(nextMod, 3000) }
+          const p = vid.play(); if (p) p.catch(() => { timerRef.current = setTimeout(nextMod, 15000) })
+          timerRef.current = setTimeout(() => { if (vid.paused) nextMod() }, 30000)
+        } else {
+          timerRef.current = setTimeout(nextMod, (item.dur_sec || 15) * 1000)
+        }
+      } else {
+        timerRef.current = setTimeout(nextMod, (item.dur_sec || 12) * 1000)
+      }
     } else if (item.tipo === 'instagram') {
       // Avança o índice do reel para o próximo loop
       reelsIdxRef.current = (reelsIdxRef.current + 1)
       const vid = document.getElementById('ig-video')
       if (vid && reelsVideos.length > 0) {
-        vid.currentTime = 0
+        vid.muted = true
         vid.loop = false
+        vid.playsInline = true
+        vid.currentTime = 0
         vid.onended = () => nextMod()
-        vid.onerror = () => nextMod()
-        clearInterval(window.__reelWd)
-        var ultimoT = -1, parado = 0, buf = 0
-        window.__reelWd = setInterval(function () {
-          var v = document.getElementById('ig-video')
-          if (!v) { clearInterval(window.__reelWd); return }
-          if (v.ended) { clearInterval(window.__reelWd); nextMod(); return }
-          if (v.currentTime === ultimoT) { if (v.readyState >= 3) { parado++ } else { buf++ } } else { parado = 0; buf = 0; ultimoT = v.currentTime }
-          if (parado >= 15 || buf >= 45) { clearInterval(window.__reelWd); nextMod() }
-        }, 1000)
-        // Aguarda o vídeo estar pronto
+        vid.onerror = () => { timerRef.current = setTimeout(nextMod, 3000) }
         const tryPlay = () => {
+          vid.muted = true
           const p = vid.play()
-          if (p) p.catch(() => { timerRef.current = setTimeout(nextMod, 20000) })
+          if (p !== undefined) {
+            p.then(() => {
+              setTimeout(() => { try { vid.muted = false } catch(e){} }, 500)
+            }).catch(() => {
+              timerRef.current = setTimeout(nextMod, 20000)
+            })
+          }
         }
-        if (vid.readyState >= 2) {
+        if (vid.readyState >= 3) {
           tryPlay()
         } else {
+          vid.load()
+          vid.oncanplaythrough = () => { vid.oncanplaythrough = null; tryPlay() }
           vid.oncanplay = () => { vid.oncanplay = null; tryPlay() }
-          timerRef.current = setTimeout(() => { if (!vid.paused) return; nextMod() }, 15000)
+          timerRef.current = setTimeout(() => {
+            if (vid.paused) nextMod()
+          }, 12000)
         }
       } else {
         timerRef.current = setTimeout(nextMod, (item.dur_sec || 20) * 1000)
@@ -247,10 +273,30 @@ export default function TV({ params }) {
   const item = playlist[modIdx] || { tipo: 'slides', dur_sec: 8 }
   const tipo = item.tipo
   const gold = config.cor || '#d2b36f'
+  const ofertaAtual = ofertas.length ? ofertas[(ofertaIdxRef.current - 1 + ofertas.length * 10) % ofertas.length] : null
   const loteAtual = galLotes[galLote] || []
 
+  // Auto fullscreen ao carregar
+  useEffect(() => {
+    const goFull = () => {
+      const el = document.documentElement
+      if (el.requestFullscreen) el.requestFullscreen()
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen()
+      else if (el.mozRequestFullScreen) el.mozRequestFullScreen()
+      else if (el.msRequestFullscreen) el.msRequestFullscreen()
+    }
+    // Tenta ao carregar e também ao clicar (alguns browsers exigem interação)
+    setTimeout(goFull, 1000)
+    document.addEventListener('click', goFull, { once: true })
+    document.addEventListener('keydown', goFull, { once: true })
+    return () => {
+      document.removeEventListener('click', goFull)
+      document.removeEventListener('keydown', goFull)
+    }
+  }, [])
+
   return (
-    <div style={{ width: '100%', height: '100%', overflow: 'hidden', background: '#060606', position: 'fixed', inset: 0, display: 'grid', gridTemplateColumns: '56px 1fr', gridTemplateRows: '1fr 44px', fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ position: 'fixed', inset: 0, width: '100%', height: '100%', overflow: 'hidden', background: '#060606', display: 'grid', gridTemplateColumns: '56px 1fr', gridTemplateRows: '1fr 44px', fontFamily: "'Inter', sans-serif" }}>
 
       {/* STRIP LATERAL */}
       <div style={{ gridArea: '1/1/2/2', background: 'linear-gradient(180deg,#1a1500,#0f0e00,#1a1500)', borderRight: '1px solid rgba(210,179,111,.25)', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px 0 12px', gap: 0, zIndex: 30 }}>
@@ -328,7 +374,7 @@ export default function TV({ params }) {
               <div style={{ borderRight: '1px solid #111', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ flex: 1, background: 'linear-gradient(135deg,#1a1a00,#0d0d0d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 60, color: '#222', position: 'relative', overflow: 'hidden' }}>
                   {news[0]?.img
-                    ? <img src={`/api/imgproxy?url=${encodeURIComponent(news[0].img)}`} alt=""
+                    ? <img src={news[0].img.startsWith('http') ? `/api/imgproxy?url=${encodeURIComponent(news[0].img)}` : news[0].img} alt=""
                         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
                         onError={e => { e.target.style.display='none' }} />
                     : null}
@@ -346,7 +392,7 @@ export default function TV({ params }) {
                   <div key={i} style={{ flex: 1, display: 'flex', borderBottom: i<2?'1px solid #111':undefined }}>
                     <div style={{ width: 100, flexShrink: 0, background: '#1a1a00', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: '#333', position: 'relative', overflow: 'hidden' }}>
                       {n.img
-                        ? <img src={`/api/imgproxy?url=${encodeURIComponent(n.img)}`} alt=""
+                        ? <img src={n.img.startsWith('http') ? `/api/imgproxy?url=${encodeURIComponent(n.img)}` : n.img} alt=""
                             style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
                             onError={e => { e.target.style.display='none' }} />
                         : null}
@@ -414,20 +460,63 @@ export default function TV({ params }) {
         })()}
 
         {/* INSTAGRAM */}
+        {tipo === 'ofertas' && ofertaAtual && (
+          <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 50% 0%,#241a00,#060606 70%)', display: 'flex' }}>
+            {/* Mídia à esquerda */}
+            <div style={{ flex: '0 0 52%', position: 'relative', overflow: 'hidden', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {ofertaAtual.midia_url ? (
+                ofertaAtual.midia_tipo === 'video'
+                  ? <video id="oferta-video" muted playsInline src={ofertaAtual.midia_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <img src={ofertaAtual.midia_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <div style={{ fontSize: 90, opacity: .12 }}>🏷️</div>
+              )}
+              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg,transparent 60%,#060606)' }} />
+            </div>
+            {/* Texto à direita */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '48px 56px', gap: 4 }}>
+              <div style={{ fontSize: 12, letterSpacing: '.35em', textTransform: 'uppercase', color: gold, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 8 }}>◆</span> Oferta Especial
+              </div>
+              {ofertaAtual.chamada && (
+                <div style={{ fontFamily: 'serif', fontSize: 92, lineHeight: .9, color: gold, letterSpacing: '-.02em', marginBottom: 10, textShadow: '0 4px 30px rgba(210,179,111,.25)' }}>{ofertaAtual.chamada}</div>
+              )}
+              {ofertaAtual.titulo && (
+                <div style={{ fontFamily: 'serif', fontSize: 40, lineHeight: 1.05, color: '#fff', marginBottom: 4 }}>{ofertaAtual.titulo}</div>
+              )}
+              {ofertaAtual.subtitulo && (
+                <div style={{ fontSize: 18, color: 'rgba(255,255,255,.55)', marginBottom: 14 }}>{ofertaAtual.subtitulo}</div>
+              )}
+              {ofertaAtual.descricao && (
+                <div style={{ fontSize: 15, color: 'rgba(255,255,255,.4)', lineHeight: 1.7, maxWidth: 520, marginBottom: 20 }}>{ofertaAtual.descricao}</div>
+              )}
+              {ofertaAtual.validade && (
+                <div style={{ display: 'inline-flex', alignSelf: 'flex-start', alignItems: 'center', gap: 8, padding: '10px 22px', border: '1px solid ' + gold + '55', borderRadius: 4, fontSize: 13, letterSpacing: '.1em', textTransform: 'uppercase', color: gold, background: 'rgba(210,179,111,.06)' }}>
+                  ⏱ {ofertaAtual.validade}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {tipo === 'instagram' && (
           <div style={{ position: 'absolute', inset: 0, background: '#060606', display: 'flex' }}>
-            <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(160deg,#090912,#0a0a0a)' }}>
-              <video
+            <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(160deg,#090912,#0a0a0a)', overflow: 'hidden' }}>
+              {reelsVideo ? (
+                <video
                   id="ig-video"
-                  key={reelsVideo?.url || 'no-video'}
+                  key={reelsVideo.url}
                   muted
                   playsInline
                   preload="auto"
-                  src={reelsVideo?.url || ''}
-                  style={{ width: '100%', height: '100%', objectFit: 'contain', display: reelsVideo ? 'block' : 'none', position: 'absolute', inset: 0 }}
+                  src={reelsVideo.url}
+                  style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', position: 'absolute', inset: 0 }}
                 />
+              ) : (
+                <video id="ig-video" style={{ display: 'none' }} />
+              )}
               {!reelsVideo && (
-                <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, color: '#2a2a2a' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, color: '#2a2a2a' }}>
                   <div style={{ fontSize: 64 }}>🎬</div>
                   <div style={{ fontSize: 14, letterSpacing: '.1em', textTransform: 'uppercase', color: '#333', textAlign: 'center', lineHeight: 1.6 }}>Adicione vídeos com<br/><strong>reel</strong> no nome à biblioteca</div>
                 </div>
@@ -439,7 +528,7 @@ export default function TV({ params }) {
               </div>
             </div>
             <div style={{ width: 200, flexShrink: 0, borderLeft: '1px solid rgba(210,179,111,.15)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 16px', gap: 16, background: 'linear-gradient(180deg,#0d0d00,#0a0a0a)' }}>
-              <div style={{ width: 150, height: 150, borderRadius: 14, overflow: 'hidden', background: '#fff', padding: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: 150, height: 150, borderRadius: 14, background: '#fff', padding: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 12 }}>
                 <img src={`/api/qr?loja=${loja}`} alt="QR"
                   style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
               </div>
