@@ -48,7 +48,7 @@ export default function Painel() {
       const [cfgRes, plRes, midRes, tvRes, notRes, ofRes] = await Promise.all([
         fetch(`/api/config?loja=${lojaId}`).then(r => r.json()),
         fetch(`/api/playlist?loja=${lojaId}`).then(r => r.json()),
-        fetch(`/api/debug?loja=${lojaId}`).then(r => r.json()),
+        supabase.from('midias').select('*').eq('loja', lojaId).order('created_at', { ascending: false }),
         supabase.from('tvs').select('*').eq('loja', lojaId),
         supabase.from('noticias').select('*').eq('loja', lojaId).order('ordem'),
         supabase.from('ofertas').select('*').eq('loja', lojaId).order('ordem'),
