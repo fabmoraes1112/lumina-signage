@@ -221,8 +221,12 @@ export default function TV({ params }) {
       // Avança o índice do reel para o próximo loop
       reelsIdxRef.current = (reelsIdxRef.current + 1)
       const vid = document.getElementById('ig-video')
-      if (vid && reelsVideos.length > 0) {
+      const reelAtual = reelsVideos[reelsIdxRef.current % reelsVideos.length]
+      if (vid && reelsVideos.length > 0 && reelAtual) {
+        try { vid.pause(); vid.removeAttribute('src'); vid.load() } catch(e){}
+        vid.src = reelAtual.url
         vid.muted = true
+        vid.loop = false
         vid.loop = false
         vid.playsInline = true
         vid.currentTime = 0
@@ -491,19 +495,13 @@ export default function TV({ params }) {
         {tipo === 'instagram' && (
           <div style={{ position: 'absolute', inset: 0, background: '#060606', display: 'flex' }}>
             <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(160deg,#090912,#0a0a0a)', overflow: 'hidden' }}>
-              {reelsVideo ? (
-                <video
-                  id="ig-video"
-                  key={reelsVideo.url}
-                  muted
-                  playsInline
-                  preload="auto"
-                  src={reelsVideo.url}
-                  style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', position: 'absolute', inset: 0 }}
-                />
-              ) : (
-                <video id="ig-video" style={{ display: 'none' }} />
-              )}
+              <video
+                id="ig-video"
+                muted
+                playsInline
+                preload="auto"
+                style={{ width: '100%', height: '100%', objectFit: 'contain', display: reelsVideo ? 'block' : 'none', position: 'absolute', inset: 0 }}
+              />
               {!reelsVideo && (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, color: '#2a2a2a' }}>
                   <div style={{ fontSize: 64 }}>🎬</div>
