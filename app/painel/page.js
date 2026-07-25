@@ -45,15 +45,14 @@ export default function Painel() {
   async function carregar(lojaId = loja) {
     setLoading(true)
     try {
-      const _r = await Promise.allSettled([
+      const [cfgRes, plRes, midRes, tvRes, notRes, ofRes] = await Promise.all([
         fetch(`/api/config?loja=${lojaId}`).then(r => r.json()),
         fetch(`/api/playlist?loja=${lojaId}`).then(r => r.json()),
-        supabase.from('midias').select('*').eq('loja', lojaId).order('created_at', { ascending: false }),
+        fetch(`/api/debug?loja=${lojaId}`).then(r => r.json()),
         supabase.from('tvs').select('*').eq('loja', lojaId),
         supabase.from('noticias').select('*').eq('loja', lojaId).order('ordem'),
         supabase.from('ofertas').select('*').eq('loja', lojaId).order('ordem'),
       ])
-      const [cfgRes,plRes,midRes,tvRes,notRes,ofRes] = _r.map(x => x.status === 'fulfilled' ? x.value : {})
       if (cfgRes.config) setConfig(cfgRes.config)
       if (plRes.playlist) setPlaylist(plRes.playlist.map(p => ({
         ...p, tipo: p.tipo, nome: p.nome || MODULOS[p.tipo]?.nome || p.tipo,
@@ -559,7 +558,7 @@ export default function Painel() {
                 <div style={{ fontSize: 12, color: '#7A85A3', lineHeight: 1.7 }}>
                   Cada oferta aparece <strong style={{color:'#d2b36f'}}>uma por vez</strong>, em rodízio: a cada volta do loop a TV mostra a próxima.
                   Pode usar foto ou vídeo. Se não houver ofertas, a TV pula essa seção.<br/>
-                  <strong>Imagem/vídeo:</strong> paisagem (horizontal), ideal 1920×1080px (16:9).
+                  <strong>Imagem:</strong> quadrada (1:1), ideal 1080×1080px.
                 </div>
               </div>
 
@@ -574,8 +573,8 @@ export default function Painel() {
                               : <img src={o.midia_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />)
                           : <span style={{ fontSize: 24, opacity: .3 }}>🏷️</span>}
                       </div>
-                      <button onClick={() => { setOfertaEditando(o.id); ofertaMidiaRef.current?.click() }} style={{ ...S.btnSm, width: '100%', justifyContent: 'center' }}>Foto ou vídeo</button>
-                      <div style={{ fontSize: 9, color: '#7A85A3', textAlign: 'center', marginTop: 4 }}>1920×1080 (16:9)</div>
+                      <button onClick={() => { setOfertaEditando(o.id); ofertaMidiaRef.current?.click() }} style={{ ...S.btnSm, width: '100%', justifyContent: 'center' }}>Foto da campanha</button>
+                      <div style={{ fontSize: 9, color: '#7A85A3', textAlign: 'center', marginTop: 4 }}>1080×1080 (quadrada 1:1)</div>
                     </div>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <div style={{ display: 'flex', gap: 8 }}>

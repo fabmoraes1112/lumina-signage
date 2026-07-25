@@ -128,7 +128,16 @@ export default function TV({ params }) {
         try {
           const r = await fetch('/api/news?t=' + Date.now(), { cache: 'no-store' })
           const d = await r.json()
-          if (d.news?.length) lista = lista.concat(d.news.slice(0, 4 - lista.length))
+          if (d.news && d.news.length) {
+            const jaTem = new Set(lista.map(n => (n.title || '').trim().toLowerCase()))
+            const extras = []
+            for (const item of d.news) {
+              const t = (item.title || '').trim().toLowerCase()
+              if (t && !jaTem.has(t)) { jaTem.add(t); extras.push(item) }
+              if (lista.length + extras.length >= 4) break
+            }
+            lista = lista.concat(extras)
+          }
         } catch(e) {}
       }
       if (lista.length) { setNews(lista); return }
@@ -207,25 +216,9 @@ export default function TV({ params }) {
       }
     } else if (item.tipo === 'ofertas') {
       fetchOfertas()
-      // Sem ofertas cadastradas: pula o bloco
-      if (!ofertas.length) { timerRef.current = setTimeout(nextMod, 50); return }
-      // Rodízio: uma oferta por volta do loop
-      const ofertaAtual = ofertas[ofertaIdxRef.current % ofertas.length]
+      if (ofertas.length === 0) { timerRef.current = setTimeout(nextMod, 50); return }
       ofertaIdxRef.current = (ofertaIdxRef.current + 1)
-      if (ofertaAtual && ofertaAtual.midia_tipo === 'video' && ofertaAtual.midia_url) {
-        const vid = document.getElementById('oferta-video')
-        if (vid) {
-          vid.muted = true; vid.loop = false; vid.currentTime = 0
-          vid.onended = () => nextMod()
-          vid.onerror = () => { timerRef.current = setTimeout(nextMod, 3000) }
-          const p = vid.play(); if (p) p.catch(() => { timerRef.current = setTimeout(nextMod, 15000) })
-          timerRef.current = setTimeout(() => { if (vid.paused) nextMod() }, 30000)
-        } else {
-          timerRef.current = setTimeout(nextMod, (item.dur_sec || 15) * 1000)
-        }
-      } else {
-        timerRef.current = setTimeout(nextMod, (item.dur_sec || 12) * 1000)
-      }
+      timerRef.current = setTimeout(nextMod, (item.dur_sec || 12) * 1000)
     } else if (item.tipo === 'instagram') {
       // Avança o índice do reel para o próximo loop
       reelsIdxRef.current = (reelsIdxRef.current + 1)
@@ -462,16 +455,14 @@ export default function TV({ params }) {
         {/* INSTAGRAM */}
         {tipo === 'ofertas' && ofertaAtual && (
           <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 50% 0%,#241a00,#060606 70%)', display: 'flex' }}>
-            {/* Mídia à esquerda */}
-            <div style={{ flex: '0 0 52%', position: 'relative', overflow: 'hidden', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {/* Imagem quadrada centralizada */}
+            <div style={{ flex: '0 0 50%', position: 'relative', overflow: 'hidden', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4vh' }}>
               {ofertaAtual.midia_url ? (
-                ofertaAtual.midia_tipo === 'video'
-                  ? <video id="oferta-video" muted playsInline src={ofertaAtual.midia_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : <img src={ofertaAtual.midia_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={ofertaAtual.midia_url} alt="" style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto', objectFit: 'contain', borderRadius: 12, boxShadow: '0 12px 50px rgba(0,0,0,.6)' }} />
               ) : (
                 <div style={{ fontSize: 90, opacity: .12 }}>🏷️</div>
               )}
-              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg,transparent 60%,#060606)' }} />
+              <div style={{ position: 'absolute', top: 0, bottom: 0, right: 0, width: 80, background: 'linear-gradient(90deg,transparent,#060606)' }} />
             </div>
             {/* Texto à direita */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '48px 56px', gap: 4 }}>
