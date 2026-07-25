@@ -45,14 +45,15 @@ export default function Painel() {
   async function carregar(lojaId = loja) {
     setLoading(true)
     try {
-      const [cfgRes, plRes, midRes, tvRes, notRes, ofRes] = await Promise.all([
+      const _r = await Promise.allSettled([
         fetch(`/api/config?loja=${lojaId}`).then(r => r.json()),
         fetch(`/api/playlist?loja=${lojaId}`).then(r => r.json()),
-        fetch(`/api/debug?loja=${lojaId}`).then(r => r.json()),
+        supabase.from('midias').select('*').eq('loja', lojaId).order('created_at', { ascending: false }),
         supabase.from('tvs').select('*').eq('loja', lojaId),
         supabase.from('noticias').select('*').eq('loja', lojaId).order('ordem'),
         supabase.from('ofertas').select('*').eq('loja', lojaId).order('ordem'),
       ])
+      const [cfgRes,plRes,midRes,tvRes,notRes,ofRes] = _r.map(x => x.status === 'fulfilled' ? x.value : {})
       if (cfgRes.config) setConfig(cfgRes.config)
       if (plRes.playlist) setPlaylist(plRes.playlist.map(p => ({
         ...p, tipo: p.tipo, nome: p.nome || MODULOS[p.tipo]?.nome || p.tipo,
