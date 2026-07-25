@@ -82,8 +82,6 @@ export default function TV({ params }) {
         () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'midias', filter: 'loja=eq.' + loja },
         () => load())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'noticias', filter: 'loja=eq.' + loja }, () => fetchNews())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ofertas', filter: 'loja=eq.' + loja }, () => fetchOfertas())
       .subscribe()
     return () => supabase.removeChannel(channel)
   }, [loja])
