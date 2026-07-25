@@ -137,6 +137,7 @@ export default function Painel() {
     setLoading(false)
   }
   async function salvarNoticias() {
+    if (loading) return
     setLoading(true)
     try {
       await supabase.from('noticias').delete().eq('loja', loja)
@@ -175,6 +176,7 @@ export default function Painel() {
     setLoading(false)
   }
   async function salvarOfertas() {
+    if (loading) return
     setLoading(true)
     try {
       await supabase.from('ofertas').delete().eq('loja', loja)
