@@ -27,13 +27,7 @@ export default function Painel() {
   const [loading, setLoading]   = useState(false)
   const [toast, setToast]       = useState(null)
   const [drag, setDrag]         = useState(null)
-  const [noticias, setNoticias] = useState([])
-  const [ofertas, setOfertas]   = useState([])
-  const [noticiaEditando, setNoticiaEditando] = useState(null)
-  const [ofertaEditando, setOfertaEditando]   = useState(null)
   const fileRef = useRef()
-  const noticiaImgRef = useRef()
-  const ofertaMidiaRef = useRef()
 
   // ── Toast ──
   function showToast(msg, type = 'ok') {
@@ -45,23 +39,19 @@ export default function Painel() {
   async function carregar(lojaId = loja) {
     setLoading(true)
     try {
-      const [cfgRes, plRes, midRes, tvRes, notRes, ofRes] = await Promise.all([
+      const [cfgRes, plRes, midRes, tvRes] = await Promise.all([
         fetch(`/api/config?loja=${lojaId}`).then(r => r.json()),
         fetch(`/api/playlist?loja=${lojaId}`).then(r => r.json()),
-        fetch(`/api/debug?loja=${lojaId}`).then(r => r.json()),
+        fetch(`/api/midias?loja=${lojaId}`).then(r => r.json()),
         supabase.from('tvs').select('*').eq('loja', lojaId),
-        supabase.from('noticias').select('*').eq('loja', lojaId).order('ordem'),
-        supabase.from('ofertas').select('*').eq('loja', lojaId).order('ordem'),
       ])
       if (cfgRes.config) setConfig(cfgRes.config)
       if (plRes.playlist) setPlaylist(plRes.playlist.map(p => ({
         ...p, tipo: p.tipo, nome: p.nome || MODULOS[p.tipo]?.nome || p.tipo,
         dur_sec: p.dur_sec || 10,
       })))
-      const mList = midRes.midias || midRes.data || []; if (mList.length) setMidias(mList.filter(m => m.loja === lojaId))
+      if (midRes.midias) setMidias(midRes.midias)
       if (tvRes.data) setTvs(tvRes.data)
-      if (notRes.data) setNoticias(notRes.data)
-      if (ofRes.data) setOfertas(ofRes.data)
       showToast('Sincronizado com Supabase!', 'ok')
     } catch(e) {
       showToast('Erro ao carregar: ' + e.message, 'err')
@@ -101,95 +91,6 @@ export default function Painel() {
     if (res.ok) { showToast('Mídia excluída', 'warn'); carregar(loja) }
     else showToast('Erro: ' + res.error, 'err')
   }
-
-  // ── Upload direto pro Storage (retorna url e path) ──
-  async function uploadStorage(file) {
-    const ext = file.name.split('.').pop().toLowerCase()
-    const path = `${loja}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
-    const { error } = await supabase.storage.from('midias').upload(path, file, { contentType: file.type, upsert: false })
-    if (error) throw error
-    const { data: { publicUrl } } = supabase.storage.from('midias').getPublicUrl(path)
-    return { url: publicUrl, path }
-  }
-
-  // ════════ NOTÍCIAS ════════
-  function novaNoticia() {
-    setNoticias(prev => [...prev, {
-      id: 'new_' + Date.now(), loja, titulo: '', subtitulo: '',
-      img_url: '', img_path: '', destaque: prev.filter(n => n.destaque).length === 0, ordem: prev.length, ativo: true, _novo: true,
-    }])
-  }
-  function editarNoticia(id, campo, valor) {
-    setNoticias(prev => prev.map(n => n.id === id ? { ...n, [campo]: valor } : n))
-  }
-  function marcarDestaque(id) {
-    setNoticias(prev => prev.map(n => ({ ...n, destaque: n.id === id })))
-  }
-  async function uploadImgNoticia(id, file) {
-    if (!file) return
-    setLoading(true)
-    try {
-      const { url, path } = await uploadStorage(file)
-      editarNoticia(id, 'img_url', url); editarNoticia(id, 'img_path', path)
-      showToast('Imagem enviada!', 'ok')
-    } catch(e) { showToast('Erro no upload: ' + e.message, 'err') }
-    setLoading(false)
-  }
-  async function salvarNoticias() {
-    setLoading(true)
-    try {
-      await supabase.from('noticias').delete().eq('loja', loja)
-      const rows = noticias.map((n, i) => ({
-        loja, titulo: n.titulo || '', subtitulo: n.subtitulo || '',
-        img_url: n.img_url || '', img_path: n.img_path || '',
-        destaque: !!n.destaque, ordem: i, ativo: true,
-      })).filter(n => n.titulo.trim())
-      if (rows.length) { const { error } = await supabase.from('noticias').insert(rows); if (error) throw error }
-      showToast('Notícias publicadas na TV!', 'ok')
-      carregar(loja)
-    } catch(e) { showToast('Erro: ' + e.message, 'err') }
-    setLoading(false)
-  }
-  function removerNoticia(id) { setNoticias(prev => prev.filter(n => n.id !== id)) }
-
-  // ════════ OFERTAS ════════
-  function novaOferta() {
-    setOfertas(prev => [...prev, {
-      id: 'new_' + Date.now(), loja, titulo: '', subtitulo: '', descricao: '',
-      chamada: '', validade: '', midia_tipo: '', midia_url: '', midia_path: '', ordem: prev.length, ativo: true, _novo: true,
-    }])
-  }
-  function editarOferta(id, campo, valor) {
-    setOfertas(prev => prev.map(o => o.id === id ? { ...o, [campo]: valor } : o))
-  }
-  async function uploadMidiaOferta(id, file) {
-    if (!file) return
-    setLoading(true)
-    try {
-      const { url, path } = await uploadStorage(file)
-      const tipo = file.type.startsWith('video') ? 'video' : 'imagem'
-      editarOferta(id, 'midia_url', url); editarOferta(id, 'midia_path', path); editarOferta(id, 'midia_tipo', tipo)
-      showToast('Mídia enviada!', 'ok')
-    } catch(e) { showToast('Erro no upload: ' + e.message, 'err') }
-    setLoading(false)
-  }
-  async function salvarOfertas() {
-    setLoading(true)
-    try {
-      await supabase.from('ofertas').delete().eq('loja', loja)
-      const rows = ofertas.map((o, i) => ({
-        loja, titulo: o.titulo || '', subtitulo: o.subtitulo || '', descricao: o.descricao || '',
-        chamada: o.chamada || '', validade: o.validade || '',
-        midia_tipo: o.midia_tipo || '', midia_url: o.midia_url || '', midia_path: o.midia_path || '',
-        ordem: i, ativo: true,
-      })).filter(o => o.titulo.trim())
-      if (rows.length) { const { error } = await supabase.from('ofertas').insert(rows); if (error) throw error }
-      showToast('Ofertas publicadas na TV!', 'ok')
-      carregar(loja)
-    } catch(e) { showToast('Erro: ' + e.message, 'err') }
-    setLoading(false)
-  }
-  function removerOferta(id) { setOfertas(prev => prev.filter(o => o.id !== id)) }
 
   // ── Salva playlist ──
   async function salvarPlaylist() {
@@ -275,8 +176,6 @@ export default function Painel() {
           {[
             ['overview', '🏠', 'Visão geral'],
             ['biblioteca', '📸', 'Biblioteca'],
-            ['noticias', '📰', 'Notícias'],
-            ['ofertas', '🏷️', 'Ofertas'],
             ['playlist', '▶️', 'Playlist'],
             ['configuracoes', '⚙️', 'Configurações'],
           ].map(([key, ic, label]) => (
@@ -503,102 +402,6 @@ export default function Painel() {
           )}
 
           {/* ── CONFIGURAÇÕES ── */}
-          {/* ── NOTÍCIAS ── */}
-          {pagina === 'noticias' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ ...S.card, background: 'rgba(79,126,255,.08)', borderColor: '#4F7EFF44' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Como funciona</div>
-                <div style={{ fontSize: 12, color: '#7A85A3', lineHeight: 1.7 }}>
-                  A notícia marcada como <strong style={{color:'#4F7EFF'}}>Destaque</strong> aparece grande na TV. As outras aparecem menores ao lado.
-                  Se você criar menos de 4, a TV completa com notícias de moda da internet.<br/>
-                  <strong>Imagem do destaque:</strong> retrato (vertical), ideal 900×1200px · <strong>Imagens menores:</strong> paisagem (horizontal), ideal 800×450px.
-                </div>
-              </div>
-
-              {noticias.map((n) => (
-                <div key={n.id} style={{ ...S.card, borderColor: n.destaque ? '#4F7EFF' : '#2A3454' }}>
-                  <div style={{ display: 'flex', gap: 16 }}>
-                    <div style={{ width: 120, flexShrink: 0 }}>
-                      <div style={{ width: 120, height: n.destaque ? 150 : 70, borderRadius: 8, overflow: 'hidden', background: '#1C2540', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 6 }}>
-                        {n.img_url
-                          ? <img src={n.img_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          : <span style={{ fontSize: 24, opacity: .3 }}>🖼️</span>}
-                      </div>
-                      <button onClick={() => { setNoticiaEditando(n.id); noticiaImgRef.current?.click() }} style={{ ...S.btnSm, width: '100%', justifyContent: 'center' }}>Trocar imagem</button>
-                      <div style={{ fontSize: 9, color: '#7A85A3', textAlign: 'center', marginTop: 4 }}>{n.destaque ? '900×1200 (vertical)' : '800×450 (horizontal)'}</div>
-                    </div>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                        <button onClick={() => marcarDestaque(n.id)} style={{
-                          ...S.btnSm, background: n.destaque ? '#4F7EFF' : '#1C2540', color: n.destaque ? '#fff' : '#7A85A3', borderColor: n.destaque ? '#4F7EFF' : '#2A3454',
-                        }}>{n.destaque ? '★ Destaque' : '☆ Tornar destaque'}</button>
-                        <button onClick={() => removerNoticia(n.id)} style={{ ...S.btnSm, color: '#EF4444', marginLeft: 'auto' }}>🗑️ Excluir</button>
-                      </div>
-                      <input value={n.titulo} onChange={e => editarNoticia(n.id, 'titulo', e.target.value)} placeholder="Título da notícia" style={S.input} />
-                      <input value={n.subtitulo} onChange={e => editarNoticia(n.id, 'subtitulo', e.target.value)} placeholder="Subtítulo / descrição curta" style={S.input} />
-                    </div>
-                  </div>
-                </div>
-              ))}
-
-              <div style={{ display: 'flex', gap: 10 }}>
-                <button onClick={novaNoticia} style={{ ...S.btnGhost, flex: 1, justifyContent: 'center' }}>+ Adicionar notícia</button>
-                <button onClick={salvarNoticias} style={{ ...S.btnPrimary }}>💾 Publicar na TV</button>
-              </div>
-              <input ref={noticiaImgRef} type="file" accept="image/*" style={{ display: 'none' }}
-                onChange={e => { uploadImgNoticia(noticiaEditando, e.target.files[0]); e.target.value = '' }} />
-            </div>
-          )}
-
-          {/* ── OFERTAS ── */}
-          {pagina === 'ofertas' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ ...S.card, background: 'rgba(210,179,111,.08)', borderColor: '#d2b36f44' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Como funciona</div>
-                <div style={{ fontSize: 12, color: '#7A85A3', lineHeight: 1.7 }}>
-                  Cada oferta aparece <strong style={{color:'#d2b36f'}}>uma por vez</strong>, em rodízio: a cada volta do loop a TV mostra a próxima.
-                  Pode usar foto ou vídeo. Se não houver ofertas, a TV pula essa seção.<br/>
-                  <strong>Imagem/vídeo:</strong> paisagem (horizontal), ideal 1920×1080px (16:9).
-                </div>
-              </div>
-
-              {ofertas.map((o) => (
-                <div key={o.id} style={{ ...S.card }}>
-                  <div style={{ display: 'flex', gap: 16 }}>
-                    <div style={{ width: 160, flexShrink: 0 }}>
-                      <div style={{ width: 160, height: 90, borderRadius: 8, overflow: 'hidden', background: '#1C2540', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 6 }}>
-                        {o.midia_url
-                          ? (o.midia_tipo === 'video'
-                              ? <div style={{ fontSize: 28 }}>🎬</div>
-                              : <img src={o.midia_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />)
-                          : <span style={{ fontSize: 24, opacity: .3 }}>🏷️</span>}
-                      </div>
-                      <button onClick={() => { setOfertaEditando(o.id); ofertaMidiaRef.current?.click() }} style={{ ...S.btnSm, width: '100%', justifyContent: 'center' }}>Foto ou vídeo</button>
-                      <div style={{ fontSize: 9, color: '#7A85A3', textAlign: 'center', marginTop: 4 }}>1920×1080 (16:9)</div>
-                    </div>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <input value={o.chamada} onChange={e => editarOferta(o.id, 'chamada', e.target.value)} placeholder="CHAMADA (ex: 30% OFF)" style={{ ...S.input, fontWeight: 700, color: '#d2b36f' }} />
-                        <button onClick={() => removerOferta(o.id)} style={{ ...S.btnSm, color: '#EF4444' }}>🗑️</button>
-                      </div>
-                      <input value={o.titulo} onChange={e => editarOferta(o.id, 'titulo', e.target.value)} placeholder="Título da oferta" style={S.input} />
-                      <input value={o.subtitulo} onChange={e => editarOferta(o.id, 'subtitulo', e.target.value)} placeholder="Subtítulo" style={S.input} />
-                      <textarea value={o.descricao} onChange={e => editarOferta(o.id, 'descricao', e.target.value)} placeholder="Descrição da campanha" rows={2} style={{ ...S.input, height: 'auto', paddingTop: 8, resize: 'vertical', fontFamily: 'inherit' }} />
-                      <input value={o.validade} onChange={e => editarOferta(o.id, 'validade', e.target.value)} placeholder="Validade / condição (ex: Válido até 31/07)" style={S.input} />
-                    </div>
-                  </div>
-                </div>
-              ))}
-
-              <div style={{ display: 'flex', gap: 10 }}>
-                <button onClick={novaOferta} style={{ ...S.btnGhost, flex: 1, justifyContent: 'center' }}>+ Adicionar oferta</button>
-                <button onClick={salvarOfertas} style={{ ...S.btnPrimary }}>💾 Publicar na TV</button>
-              </div>
-              <input ref={ofertaMidiaRef} type="file" accept="image/*,video/*" style={{ display: 'none' }}
-                onChange={e => { uploadMidiaOferta(ofertaEditando, e.target.files[0]); e.target.value = '' }} />
-            </div>
-          )}
-
           {pagina === 'configuracoes' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 600 }}>
               {[
