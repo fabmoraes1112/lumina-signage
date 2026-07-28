@@ -45,8 +45,8 @@ export default function TV({ params }) {
   const galX    = useRef(0)
   const lastTsRef = useRef(0)
 
-  const LAT = loja === 'iuna' ? -20.3569 : -20.2003
-  const LON = loja === 'iuna' ? -41.5353 : -41.4039
+  const LAT = loja === 'iuna' ? -20.3569 : -19.8167
+  const LON = loja === 'iuna' ? -41.5353 : -41.4383
 
   // ── Clock ──
   useEffect(() => {
