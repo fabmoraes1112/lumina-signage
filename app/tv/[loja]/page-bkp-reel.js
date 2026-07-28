@@ -218,27 +218,41 @@ export default function TV({ params }) {
       ofertaIdxRef.current = (ofertaIdxRef.current + 1)
       timerRef.current = setTimeout(nextMod, (item.dur_sec || 12) * 1000)
     } else if (item.tipo === 'instagram') {
+      // Avança o índice do reel para o próximo loop
       reelsIdxRef.current = (reelsIdxRef.current + 1)
       const vid = document.getElementById('ig-video')
       const reelAtual = reelsVideos[reelsIdxRef.current % reelsVideos.length]
       if (vid && reelsVideos.length > 0 && reelAtual) {
         try { vid.pause(); vid.removeAttribute('src'); vid.load() } catch(e){}
+        vid.src = reelAtual.url
         vid.muted = true
         vid.loop = false
+        vid.loop = false
         vid.playsInline = true
+        vid.currentTime = 0
         vid.onended = () => nextMod()
-        vid.onerror = () => { timerRef.current = setTimeout(nextMod, 4000) }
-        let jaComecou = false
+        vid.onerror = () => { timerRef.current = setTimeout(nextMod, 3000) }
         const tryPlay = () => {
-          if (jaComecou) return
-          jaComecou = true
+          vid.muted = true
           const p = vid.play()
-          if (p !== undefined) { p.catch(() => { timerRef.current = setTimeout(nextMod, 4000) }) }
+          if (p !== undefined) {
+            p.then(() => {
+              setTimeout(() => { try { vid.muted = false } catch(e){} }, 500)
+            }).catch(() => {
+              timerRef.current = setTimeout(nextMod, 20000)
+            })
+          }
         }
-        vid.oncanplay = tryPlay
-        timerRef.current = setTimeout(() => { if (vid.paused) nextMod() }, 20000)
-        vid.src = reelAtual.url
-        vid.load()
+        if (vid.readyState >= 3) {
+          tryPlay()
+        } else {
+          vid.load()
+          vid.oncanplaythrough = () => { vid.oncanplaythrough = null; tryPlay() }
+          vid.oncanplay = () => { vid.oncanplay = null; tryPlay() }
+          timerRef.current = setTimeout(() => {
+            if (vid.paused) nextMod()
+          }, 12000)
+        }
       } else {
         timerRef.current = setTimeout(nextMod, (item.dur_sec || 20) * 1000)
       }
