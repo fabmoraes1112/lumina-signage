@@ -1,7 +1,7 @@
 import './globals.css'
 
 export const metadata = {
-  title: 'Lumina Signage',
+  title: 'Hubrem Signage',
   description: 'Sistema de mídia indoor — FW Agência',
 }
 

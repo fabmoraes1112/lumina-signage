@@ -258,7 +258,7 @@ export default function Painel() {
       <aside style={S.sb}>
         <div style={S.sbHeader}>
           <div style={S.sbLogo}>L</div>
-          <div style={{ fontWeight: 800, fontSize: 15, letterSpacing: '-.3px' }}>Lumina<span style={{ color: '#4F7EFF' }}>.</span></div>
+          <div style={{ fontWeight: 800, fontSize: 15, letterSpacing: '-.3px' }}>Hubrem<span style={{ color: '#4F7EFF' }}>.</span></div>
         </div>
         <div style={S.sbScroll}>
           {/* Seletor de loja */}
