@@ -188,6 +188,33 @@ export default function TV({ params }) {
     setModIdx(prev => (prev + 1) % Math.max(1, playlist.length))
   }, [playlist.length])
 
+  // Protecao signage 24/7: watchdog + auto-reload de memoria
+  const recarregar = () => {
+    try {
+      const url = window.location.pathname + '?t=' + Date.now()
+      window.location.replace(url)
+    } catch(e) { try { window.location.reload() } catch(_){} }
+  }
+  const wdRef = useRef(Date.now())
+  useEffect(() => { wdRef.current = Date.now() }, [modIdx])
+  useEffect(() => {
+    const iv = setInterval(() => {
+      if (Date.now() - wdRef.current > 300000) recarregar()
+    }, 30000)
+    return () => clearInterval(iv)
+  }, [])
+  useEffect(() => {
+    const t = setTimeout(recarregar, 3600000)
+    return () => clearTimeout(t)
+  }, [])
+  const voltaRef = useRef(0)
+  useEffect(() => {
+    if (modIdx === 0 && playlist.length) {
+      voltaRef.current += 1
+      if (voltaRef.current >= 12) recarregar()
+    }
+  }, [modIdx, playlist.length])
+
   useEffect(() => {
     if (!playlist.length) return
     clearTimeout(timerRef.current)
