@@ -204,14 +204,14 @@ export default function TV({ params }) {
     return () => clearInterval(iv)
   }, [])
   useEffect(() => {
-    const t = setTimeout(recarregar, 3600000)
+    const t = setTimeout(recarregar, 1800000)
     return () => clearTimeout(t)
   }, [])
   const voltaRef = useRef(0)
   useEffect(() => {
     if (modIdx === 0 && playlist.length) {
       voltaRef.current += 1
-      if (voltaRef.current >= 12) recarregar()
+      if (voltaRef.current >= 5) recarregar()
     }
   }, [modIdx, playlist.length])
 
