@@ -58,9 +58,8 @@ export default function Painel() {
       if (cfgRes.config) setConfig(cfgRes.config)
       if (plRes.playlist) setPlaylist(plRes.playlist.map(p => ({
         ...p, tipo: p.tipo, nome: p.nome || MODULOS[p.tipo]?.nome || p.tipo,
-      const mList = (midRes.midias || midRes.data || []).filter(m => m.loja === lojaId); setMidias(mList)
       })))
-      const mList = midRes.midias || midRes.data || []; if (mList.length) setMidias(mList.filter(m => m.loja === lojaId))
+      const mList = (midRes.midias || midRes.data || []).filter(m => m.loja === lojaId); setMidias(mList)
       if (tvRes.data) setTvs(tvRes.data)
       if (notRes.data) setNoticias(notRes.data)
       if (ofRes.data) setOfertas(ofRes.data)
