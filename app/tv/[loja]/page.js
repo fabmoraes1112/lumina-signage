@@ -187,13 +187,10 @@ export default function TV({ params }) {
   const nextMod = useCallback(() => {
     setModIdx(prev => (prev + 1) % Math.max(1, playlist.length))
   }, [playlist.length])
-
-  // Protecao signage 24/7: watchdog + auto-reload de memoria
+  // Protecao signage 24/7: recarrega SO ao completar 5 voltas inteiras (nunca corta um bloco)
   const recarregar = () => {
-    try {
-      const url = window.location.pathname + '?t=' + Date.now()
-      window.location.replace(url)
-    } catch(e) { try { window.location.reload() } catch(_){} }
+    const url = window.location.pathname + '?t=' + Date.now()
+    try { window.location.replace(url) } catch(e) { try { window.location.reload() } catch(_){} }
   }
   const wdRef = useRef(Date.now())
   useEffect(() => { wdRef.current = Date.now() }, [modIdx])
@@ -203,15 +200,15 @@ export default function TV({ params }) {
     }, 30000)
     return () => clearInterval(iv)
   }, [])
+  const voltasRef = useRef(0)
+  const passouFimRef = useRef(false)
   useEffect(() => {
-    const t = setTimeout(recarregar, 1800000)
-    return () => clearTimeout(t)
-  }, [])
-  const voltaRef = useRef(0)
-  useEffect(() => {
-    if (modIdx === 0 && playlist.length) {
-      voltaRef.current += 1
-      if (voltaRef.current >= 5) recarregar()
+    if (!playlist.length) return
+    if (modIdx === playlist.length - 1) passouFimRef.current = true
+    if (modIdx === 0 && passouFimRef.current) {
+      passouFimRef.current = false
+      voltasRef.current += 1
+      if (voltasRef.current >= 5) recarregar()
     }
   }, [modIdx, playlist.length])
 
