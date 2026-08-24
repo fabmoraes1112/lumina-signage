@@ -5,6 +5,7 @@ import { supabase, uploadMidia } from '../../lib/supabase'
 const LOJAS = {
   iuna:  { nome: 'A Paulistana — Iúna',  cidade: 'Iúna, ES',  tv: '/tv/iuna'  },
   mutum: { nome: 'A Paulistana — Mutum', cidade: 'Mutum, MG', tv: '/tv/mutum' },
+  lajinha: { nome: 'A Paulistana — Lajinha', cidade: 'Lajinha, MG', tv: '/tv/lajinha' },
 }
 const MODULOS = {
   slides:    { nome: 'Slides institucionais', cor: '#22C55E', bg: 'rgba(34,197,94,.15)',    icone: '🖼️' },
