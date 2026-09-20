@@ -245,22 +245,10 @@ export default function TV({ params }) {
   useEffect(() => { wdRef.current = Date.now() }, [modIdx])
   useEffect(() => {
     const iv = setInterval(() => {
-      if (Date.now() - wdRef.current > 300000) recarregar()
+      if (Date.now() - wdRef.current > 420000) recarregar()
     }, 30000)
     return () => clearInterval(iv)
   }, [])
-  const voltasRef = useRef(0)
-  const passouFimRef = useRef(false)
-  useEffect(() => {
-    if (!playlist.length) return
-    if (modIdx === playlist.length - 1) passouFimRef.current = true
-    if (modIdx === 0 && passouFimRef.current) {
-      passouFimRef.current = false
-      voltasRef.current += 1
-      if (voltasRef.current >= 5) recarregar()
-    }
-  }, [modIdx, playlist.length])
-
   useEffect(() => {
     if (!playlist.length) return
     clearTimeout(timerRef.current)
