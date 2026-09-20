@@ -84,6 +84,35 @@ export default function TV({ params }) {
         () => load())
       .subscribe()
     return () => supabase.removeChannel(channel)
+
+  // KEEP-AWAKE: impede o aparelho de suspender por inatividade (aos ~5min)
+  useEffect(() => {
+    let wakeLock = null
+    const pedirWakeLock = async () => {
+      try {
+        if ('wakeLock' in navigator) { wakeLock = await navigator.wakeLock.request('screen') }
+      } catch(e) {}
+    }
+    pedirWakeLock()
+    const onVis = () => { if (document.visibilityState === 'visible') pedirWakeLock() }
+    document.addEventListener('visibilitychange', onVis)
+    const garantirPlay = () => {
+      const v = document.getElementById('keep-awake')
+      if (v && v.paused) { v.muted = true; const p = v.play(); if (p) p.catch(() => {}) }
+    }
+    garantirPlay()
+    const iv = setInterval(garantirPlay, 20000)
+    const umToque = () => garantirPlay()
+    document.addEventListener('click', umToque)
+    document.addEventListener('keydown', umToque)
+    return () => {
+      clearInterval(iv)
+      document.removeEventListener('visibilitychange', onVis)
+      document.removeEventListener('click', umToque)
+      document.removeEventListener('keydown', umToque)
+      try { if (wakeLock) wakeLock.release() } catch(e) {}
+    }
+  }, [])
   }, [loja])
 
   // ── Clima ──
@@ -302,6 +331,11 @@ export default function TV({ params }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, width: '100%', height: '100%', overflow: 'hidden', background: '#060606', display: 'grid', gridTemplateColumns: '56px 1fr', gridTemplateRows: '1fr 44px', fontFamily: "'Inter', sans-serif" }}>
+      {/* keep-awake: video invisivel em loop impede suspensao por inatividade do aparelho */}
+      <video id="keep-awake" muted loop playsInline autoPlay preload="auto"
+        style={{ position: 'fixed', width: 2, height: 2, bottom: 0, right: 0, opacity: 0.01, pointerEvents: 'none', zIndex: -1 }}>
+        <source src="data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAAAr9tZGF0AAAC" type="video/mp4" />
+      </video>
 
       {/* STRIP LATERAL */}
       <div style={{ gridArea: '1/1/2/2', background: 'linear-gradient(180deg,#1a1500,#0f0e00,#1a1500)', borderRight: '1px solid rgba(210,179,111,.25)', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px 0 12px', gap: 0, zIndex: 30 }}>
