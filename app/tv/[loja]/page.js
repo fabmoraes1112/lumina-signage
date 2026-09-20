@@ -101,8 +101,27 @@ export default function TV({ params }) {
       if (v && v.paused) { v.muted = true; const p = v.play(); if (p) p.catch(() => {}) }
     }
     garantirPlay()
+    // AUDIO keep-alive: mantem o Silk aberto (ele fecha aos ~10min sem atividade de audio)
+    let audioCtx = null
+    const iniciarAudio = () => {
+      try {
+        if (audioCtx) return
+        const AC = window.AudioContext || window.webkitAudioContext
+        if (!AC) return
+        audioCtx = new AC()
+        const osc = audioCtx.createOscillator()
+        const gain = audioCtx.createGain()
+        gain.gain.value = 0.0001
+        osc.frequency.value = 20
+        osc.connect(gain); gain.connect(audioCtx.destination)
+        osc.start()
+      } catch(e) {}
+    }
+    const retomarAudio = () => { try { if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume() } catch(e) {} }
+    iniciarAudio()
+    const ivAudio = setInterval(retomarAudio, 15000)
     const iv = setInterval(garantirPlay, 20000)
-    const umToque = () => garantirPlay()
+    const umToque = () => { garantirPlay(); iniciarAudio(); retomarAudio() }
     document.addEventListener('click', umToque)
     document.addEventListener('keydown', umToque)
     return () => {
@@ -111,6 +130,7 @@ export default function TV({ params }) {
       document.removeEventListener('click', umToque)
       document.removeEventListener('keydown', umToque)
       try { if (wakeLock) wakeLock.release() } catch(e) {}
+      try { clearInterval(ivAudio); if (audioCtx) audioCtx.close() } catch(e) {}
     }
   }, [])
   }, [loja])
