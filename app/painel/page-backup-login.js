@@ -19,9 +19,6 @@ const MODULOS = {
 }
 
 export default function Painel() {
-  const [autenticado, setAutenticado] = useState(false)
-  const [senhaInput, setSenhaInput]   = useState('')
-  const [erroSenha, setErroSenha]     = useState(false)
   const [loja, setLoja]         = useState('iuna')
   const [pagina, setPagina]     = useState('overview')
   const [midias, setMidias]     = useState([])
@@ -39,19 +36,6 @@ export default function Painel() {
   const noticiaImgRef = useRef()
   const ofertaMidiaRef = useRef()
 
-  // Autenticacao do painel
-  useEffect(() => {
-    try { if (localStorage.getItem('hubrem_auth') === 'ok') setAutenticado(true) } catch(e) {}
-  }, [])
-  function entrar(e) {
-    if (e) e.preventDefault()
-    if (senhaInput === 'Hubrem2026') {
-      setAutenticado(true); setErroSenha(false)
-      try { localStorage.setItem('hubrem_auth', 'ok') } catch(e) {}
-    } else {
-      setErroSenha(true); setSenhaInput('')
-    }
-  }
   // ── Toast ──
   function showToast(msg, type = 'ok') {
     setToast({ msg, type })
@@ -267,27 +251,6 @@ export default function Painel() {
   // ═══════════════════════════════
   // RENDER
   // ═══════════════════════════════
-  // Tela de login (portao de acesso)
-  if (!autenticado) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(ellipse at 50% 30%, #141a2e, #0a0d18 70%)', fontFamily: "'Inter', sans-serif", padding: 20 }}>
-        <div style={{ width: '100%', maxWidth: 380, background: 'rgba(20,26,46,.7)', border: '1px solid rgba(79,126,255,.18)', borderRadius: 18, padding: '44px 36px', boxShadow: '0 24px 70px -20px rgba(0,0,0,.7)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 8 }}>
-            <div style={{ fontWeight: 800, fontSize: 26, letterSpacing: '-.5px', color: '#fff' }}>Hubrem<span style={{ color: '#4F7EFF' }}>.</span></div>
-          </div>
-          <div style={{ textAlign: 'center', fontSize: 12, letterSpacing: '.28em', textTransform: 'uppercase', color: '#7A85A3', marginBottom: 30 }}>Painel · Acesso restrito</div>
-          <form onSubmit={entrar}>
-            <label style={{ display: 'block', fontSize: 12, color: '#9AA3BD', marginBottom: 8, fontWeight: 500 }}>Senha de acesso</label>
-            <input type="password" value={senhaInput} onChange={e => { setSenhaInput(e.target.value); setErroSenha(false) }} autoFocus placeholder="Digite a senha" style={{ width: '100%', boxSizing: 'border-box', padding: '13px 16px', borderRadius: 10, border: '1px solid ' + (erroSenha ? '#EF4444' : 'rgba(122,133,163,.3)'), background: 'rgba(10,13,24,.6)', color: '#fff', fontSize: 15, outline: 'none', marginBottom: erroSenha ? 8 : 20 }} />
-            {erroSenha ? <div style={{ fontSize: 12.5, color: '#EF4444', marginBottom: 18 }}>Senha incorreta. Tente novamente.</div> : null}
-            <button type="submit" style={{ width: '100%', padding: '13px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#4F7EFF,#3B5FD9)', color: '#fff', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>Entrar no painel</button>
-          </form>
-          <div style={{ textAlign: 'center', fontSize: 11, color: '#4A5270', marginTop: 26, lineHeight: 1.6 }}>Sistema de gestao de midia indoor.<br/>Acesso exclusivo para equipe autorizada.</div>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div style={S.app}>
 
