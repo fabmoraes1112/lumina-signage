@@ -66,11 +66,11 @@ export default function TV({ params }) {
       const [cfgRes, plRes, midRes] = await Promise.all([
         fetch('/api/config?loja=' + loja).then(r => r.json()).catch(() => ({})),
         fetch('/api/playlist?loja=' + loja).then(r => r.json()).catch(() => ({})),
-        supabase.from('midias').select('*').eq('loja', loja).order('created_at', { ascending: false }),
+        supabase.from('midias').select('*').eq('loja', loja).order('ordem', { ascending: true }),
       ])
       if (cfgRes.config) setConfig(cfgRes.config)
       if (plRes.playlist?.length) setPlaylist(plRes.playlist)
-      const midiasData = midRes.midias || midRes.data || []; if (midiasData.length) setMidias(midiasData.filter(m => m.loja === loja))
+      const midiasData = midRes.midias || midRes.data || []; if (midiasData.length) setMidias(midiasData.filter(m => m.loja === loja && m.ativo !== false))
       const ofRes = await supabase.from('ofertas').select('*').eq('loja', loja).eq('ativo', true).order('ordem')
       if (ofRes.data) setOfertas(ofRes.data)
       fetchClima(); fetchNews()
