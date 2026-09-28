@@ -75,7 +75,7 @@ export default function Painel() {
       if (plRes.playlist) setPlaylist(plRes.playlist.map(p => ({
         ...p, tipo: p.tipo, nome: p.nome || MODULOS[p.tipo]?.nome || p.tipo,
       })))
-      const mList = (midRes.midias || midRes.data || []).filter(m => m.loja === lojaId).sort((a,b) => (a.ordem||0) - (b.ordem||0)); setMidias(mList)
+      const mList = (midRes.midias || midRes.data || []).filter(m => m.loja === lojaId); setMidias(mList)
       if (tvRes.data) setTvs(tvRes.data)
       if (notRes.data) setNoticias(notRes.data)
       if (ofRes.data) setOfertas(ofRes.data)
@@ -112,32 +112,6 @@ export default function Painel() {
   }
 
   // ── Deleta mídia ──
-  // Reordenar e ativar/desativar midias
-  const [dragMidia, setDragMidia] = useState(null)
-  function onDragStartMidia(idx) { setDragMidia(idx) }
-  function onDragOverMidia(e) { e.preventDefault() }
-  async function onDropMidia(idx) {
-    if (dragMidia === null || dragMidia === idx) { setDragMidia(null); return }
-    const nova = [...midias]
-    const [movido] = nova.splice(dragMidia, 1)
-    nova.splice(idx, 0, movido)
-    setMidias(nova)
-    setDragMidia(null)
-    try {
-      await Promise.all(nova.map((m, i) =>
-        supabase.from('midias').update({ ordem: i }).eq('id', m.id)
-      ))
-      showToast('Ordem salva!', 'ok')
-    } catch(e) { showToast('Erro ao salvar ordem', 'err') }
-  }
-  async function toggleAtivoMidia(m) {
-    const novoAtivo = m.ativo === false ? true : false
-    setMidias(prev => prev.map(x => x.id === m.id ? { ...x, ativo: novoAtivo } : x))
-    try {
-      await supabase.from('midias').update({ ativo: novoAtivo }).eq('id', m.id)
-      showToast(novoAtivo ? 'Midia ativada' : 'Midia ocultada da TV', 'ok')
-    } catch(e) { showToast('Erro', 'err') }
-  }
   async function deletarMidia(id, path) {
     if (!confirm('Excluir esta mídia?')) return
     const res = await fetch(`/api/midias?id=${id}&path=${path}`, { method: 'DELETE' }).then(r => r.json())
@@ -463,47 +437,31 @@ export default function Painel() {
               {midias.length === 0
                 ? <div style={{ color: '#7A85A3', textAlign: 'center', padding: 40, fontSize: 14 }}>Nenhuma mídia ainda. Faça o upload acima.</div>
                 : (
-                  <>
-                  <div style={{ fontSize: 12, color: '#7A85A3', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 15 }}>↕️</span> Arraste as mídias para definir a ordem de exibição na TV. Use ocultar para esconder sem apagar.
-                  </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
-                    {midias.map((m, idx) => (
-                      <div key={m.id}
-                        draggable
-                        onDragStart={() => onDragStartMidia(idx)}
-                        onDragOver={onDragOverMidia}
-                        onDrop={() => onDropMidia(idx)}
-                        style={{ ...S.card, padding: 0, overflow: 'hidden', cursor: 'grab', opacity: m.ativo === false ? 0.4 : 1, border: dragMidia === idx ? '2px solid #4F7EFF' : S.card.border }}>
+                    {midias.map(m => (
+                      <div key={m.id} style={{ ...S.card, padding: 0, overflow: 'hidden' }}>
                         <div style={{ height: 120, background: '#1C2540', position: 'relative', overflow: 'hidden' }}>
                           {m.tipo === 'video'
                             ? <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>🎬</div>
                             : <img src={m.url} alt={m.nome} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           }
-                          <div style={{ position: 'absolute', top: 6, left: 6, background: 'rgba(0,0,0,.6)', color: '#fff', fontSize: 10, width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
-                            {idx + 1}
-                          </div>
                           <div style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(34,197,94,.2)', color: '#22C55E', fontSize: 9, padding: '2px 7px', borderRadius: 20, fontWeight: 600 }}>
                             {m.tipo}
                           </div>
-                          {m.ativo === false && (
-                            <div style={{ position: 'absolute', inset: 0, background: 'rgba(10,13,24,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 11, fontWeight: 600, letterSpacing: '.1em' }}>OCULTA</div>
-                          )}
                         </div>
                         <div style={{ padding: '10px 12px' }}>
                           <div style={{ fontSize: 12, fontWeight: 500, color: '#F4F6FA', marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.nome}</div>
                           <div style={{ fontSize: 10, color: '#7A85A3' }}>{m.categoria} · {new Date(m.created_at).toLocaleDateString('pt-BR')}</div>
                         </div>
                         <div style={{ display: 'flex', gap: 4, padding: '8px 12px', borderTop: '1px solid #2A3454' }}>
-                          <button onClick={() => toggleAtivoMidia(m)}
-                            style={{ ...S.btnSm, flex: 1 }}>{m.ativo === false ? '👁️ Mostrar' : '🚫 Ocultar'}</button>
+                          <button onClick={() => { addModulo('galeria'); showToast('Adicione à playlist!', 'ok') }}
+                            style={{ ...S.btnSm, flex: 1 }}>+ Playlist</button>
                           <button onClick={() => deletarMidia(m.id, m.path)}
                             style={{ ...S.btnSm, color: '#EF4444' }}>🗑️</button>
                         </div>
                       </div>
                     ))}
                   </div>
-                  </>
                 )}
             </div>
           )}
